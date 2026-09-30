@@ -3,6 +3,7 @@ package com.dispatchflow.common.api;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.util.List;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -34,6 +35,26 @@ public class ApiExceptionHandler {
 			HttpServletRequest request) {
 		return errorResponse(HttpStatus.BAD_REQUEST, "INVALID_REQUEST_BODY",
 				"Request body is missing or malformed", request.getRequestURI(), List.of());
+	}
+
+	@ExceptionHandler(ResourceNotFoundException.class)
+	public ResponseEntity<ApiErrorResponse> handleNotFound(
+			ResourceNotFoundException exception, HttpServletRequest request) {
+		return errorResponse(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND",
+				exception.getMessage(), request.getRequestURI(), List.of());
+	}
+
+	@ExceptionHandler(ConflictException.class)
+	public ResponseEntity<ApiErrorResponse> handleConflict(
+			ConflictException exception, HttpServletRequest request) {
+		return errorResponse(HttpStatus.CONFLICT, "CONFLICT",
+				exception.getMessage(), request.getRequestURI(), List.of());
+	}
+
+	@ExceptionHandler(DataIntegrityViolationException.class)
+	public ResponseEntity<ApiErrorResponse> handleDataConflict(HttpServletRequest request) {
+		return errorResponse(HttpStatus.CONFLICT, "DATA_CONFLICT",
+				"The request conflicts with existing data", request.getRequestURI(), List.of());
 	}
 
 	private ResponseEntity<ApiErrorResponse> errorResponse(
