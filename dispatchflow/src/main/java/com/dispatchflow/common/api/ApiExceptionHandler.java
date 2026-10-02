@@ -10,6 +10,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.authentication.BadCredentialsException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -49,6 +50,19 @@ public class ApiExceptionHandler {
 			ConflictException exception, HttpServletRequest request) {
 		return errorResponse(HttpStatus.CONFLICT, "CONFLICT",
 				exception.getMessage(), request.getRequestURI(), List.of());
+	}
+
+	@ExceptionHandler(InvalidRequestException.class)
+	public ResponseEntity<ApiErrorResponse> handleInvalidRequest(
+			InvalidRequestException exception, HttpServletRequest request) {
+		return errorResponse(HttpStatus.BAD_REQUEST, "INVALID_REQUEST",
+				exception.getMessage(), request.getRequestURI(), List.of());
+	}
+
+	@ExceptionHandler(BadCredentialsException.class)
+	public ResponseEntity<ApiErrorResponse> handleBadCredentials(HttpServletRequest request) {
+		return errorResponse(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED",
+				"Email or password is incorrect", request.getRequestURI(), List.of());
 	}
 
 	@ExceptionHandler(DataIntegrityViolationException.class)
