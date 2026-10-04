@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -78,6 +79,7 @@ public class SecurityConfiguration {
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(authorize -> authorize
 						.requestMatchers("/api/v1/auth/register", "/api/v1/auth/login", "/actuator/health").permitAll()
+						.requestMatchers(HttpMethod.POST, "/api/v1/inventory/**").hasAnyRole("ADMIN", "OPERATOR")
 						.requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
 						.anyRequest().authenticated())
 				.oauth2ResourceServer(resourceServer -> resourceServer

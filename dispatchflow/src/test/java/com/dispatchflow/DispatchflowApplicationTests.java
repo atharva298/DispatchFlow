@@ -8,12 +8,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.Locale;
 import java.util.UUID;
+import com.dispatchflow.users.Role;
+import com.dispatchflow.users.User;
+import com.dispatchflow.users.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import tools.jackson.databind.ObjectMapper;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -35,6 +39,12 @@ class DispatchflowApplicationTests {
 
 	@Autowired
 	private ObjectMapper objectMapper;
+
+	@Autowired
+	private UserRepository users;
+
+	@Autowired
+	private PasswordEncoder passwordEncoder;
 
 	@DynamicPropertySource
 	static void registerDatabaseProperties(DynamicPropertyRegistry registry) {
@@ -81,11 +91,41 @@ class DispatchflowApplicationTests {
 				.andExpect(header().exists("Location"))
 				.andExpect(jsonPath("$.sku").value(sku.toUpperCase(Locale.ROOT)))
 				.andReturn();
+		String productId = objectMapper.readTree(creation.getResponse().getContentAsString())
+				.get("id").asString();
 
 		mockMvc.perform(get(creation.getResponse().getHeader("Location"))
 					.header("Authorization", "Bearer " + token))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.sku").value(sku.toUpperCase(Locale.ROOT)))
 				.andExpect(jsonPath("$.price").value(24.50));
+
+		String operatorEmail = "operator-" + UUID.randomUUID() + "@example.com";
+		users.save(new User("Test Operator", operatorEmail,
+				passwordEncoder.encode("operator-password-123"), Role.OPERATOR));
+		MvcResult operatorLogin = mockMvc.perform(post("/api/v1/auth/login")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{"email":"%s","password":"operator-password-123"}
+							""".formatted(operatorEmail)))
+				.andExpect(status().isOk())
+				.andReturn();
+		String operatorToken = objectMapper.readTree(operatorLogin.getResponse().getContentAsString())
+				.get("accessToken").asString();
+
+		mockMvc.perform(post("/api/v1/inventory")
+					.header("Authorization", "Bearer " + operatorToken)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{"productId":"%s","warehouseId":"wh-west","availableQuantity":12}
+							""".formatted(productId)))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.warehouseId").value("WH-WEST"))
+				.andExpect(jsonPath("$.reservedQuantity").value(0));
+
+		mockMvc.perform(get("/api/v1/inventory/" + productId)
+					.header("Authorization", "Bearer " + token))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].availableQuantity").value(12));
 	}
 }
