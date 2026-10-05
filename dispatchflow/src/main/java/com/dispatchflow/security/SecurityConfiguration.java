@@ -79,6 +79,7 @@ public class SecurityConfiguration {
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(authorize -> authorize
 						.requestMatchers("/api/v1/auth/register", "/api/v1/auth/login", "/actuator/health").permitAll()
+						.requestMatchers(HttpMethod.POST, "/api/v1/products/**").hasAnyRole("ADMIN", "OPERATOR")
 						.requestMatchers(HttpMethod.POST, "/api/v1/inventory/**").hasAnyRole("ADMIN", "OPERATOR")
 						.requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
 						.anyRequest().authenticated())

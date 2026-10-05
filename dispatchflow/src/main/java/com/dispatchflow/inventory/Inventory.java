@@ -64,4 +64,12 @@ public class Inventory {
 	public int getAvailableQuantity() { return availableQuantity; }
 	public int getReservedQuantity() { return reservedQuantity; }
 	public Instant getUpdatedAt() { return updatedAt; }
+
+	void reserve(int quantity) {
+		if (quantity <= 0 || quantity > availableQuantity) {
+			throw new IllegalArgumentException("Reservation must be positive and within available stock");
+		}
+		availableQuantity -= quantity;
+		reservedQuantity += quantity;
+	}
 }
