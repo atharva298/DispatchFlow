@@ -72,4 +72,12 @@ public class Inventory {
 		availableQuantity -= quantity;
 		reservedQuantity += quantity;
 	}
+
+	void release(int quantity) {
+		if (quantity <= 0 || quantity > reservedQuantity) {
+			throw new IllegalStateException("Release must not exceed reserved stock");
+		}
+		reservedQuantity -= quantity;
+		availableQuantity = Math.addExact(availableQuantity, quantity);
+	}
 }

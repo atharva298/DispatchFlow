@@ -3,6 +3,7 @@ package com.dispatchflow.orders;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.UUID;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -32,5 +33,18 @@ public class OrderController {
 	@GetMapping("/{id}")
 	public OrderResponse get(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
 		return orders.get(id, UUID.fromString(jwt.getSubject()));
+	}
+
+	@GetMapping
+	public OrderPageResponse list(
+			@AuthenticationPrincipal Jwt jwt,
+			@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "20") int size) {
+		return orders.list(UUID.fromString(jwt.getSubject()), page, size);
+	}
+
+	@PostMapping("/{id}/cancel")
+	public OrderResponse cancel(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+		return orders.cancel(id, UUID.fromString(jwt.getSubject()));
 	}
 }

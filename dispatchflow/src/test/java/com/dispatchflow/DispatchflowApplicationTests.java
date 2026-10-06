@@ -130,11 +130,20 @@ class DispatchflowApplicationTests {
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.warehouseId").value("WH-WEST"))
 				.andExpect(jsonPath("$.reservedQuantity").value(0));
+		mockMvc.perform(post("/api/v1/inventory")
+					.header("Authorization", "Bearer " + operatorToken)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{"productId":"%s","warehouseId":"wh-east","availableQuantity":4}
+							""".formatted(productId)))
+				.andExpect(status().isCreated());
 
 		mockMvc.perform(get("/api/v1/inventory/" + productId)
 					.header("Authorization", "Bearer " + token))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[0].availableQuantity").value(12));
+				.andExpect(jsonPath("$[0].warehouseId").value("WH-EAST"))
+				.andExpect(jsonPath("$[0].availableQuantity").value(4))
+				.andExpect(jsonPath("$[1].availableQuantity").value(12));
 
 		MvcResult confirmedOrder = mockMvc.perform(post("/api/v1/orders")
 					.header("Authorization", "Bearer " + token)
@@ -151,12 +160,30 @@ class DispatchflowApplicationTests {
 		mockMvc.perform(get(orderLocation).header("Authorization", "Bearer " + token))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.status").value("CONFIRMED"));
+		mockMvc.perform(get("/api/v1/orders").header("Authorization", "Bearer " + token)
+					.param("page", "0").param("size", "10"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.totalElements").value(1))
+				.andExpect(jsonPath("$.content[0].id").isNotEmpty());
+
+		mockMvc.perform(post(orderLocation + "/cancel").header("Authorization", "Bearer " + token))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value("CANCELLED"));
+		mockMvc.perform(post(orderLocation + "/cancel").header("Authorization", "Bearer " + token))
+				.andExpect(status().isConflict());
+		mockMvc.perform(get("/api/v1/inventory/" + productId)
+					.header("Authorization", "Bearer " + token))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].availableQuantity").value(4))
+				.andExpect(jsonPath("$[0].reservedQuantity").value(0))
+				.andExpect(jsonPath("$[1].availableQuantity").value(12))
+				.andExpect(jsonPath("$[1].reservedQuantity").value(0));
 
 		mockMvc.perform(post("/api/v1/orders")
 					.header("Authorization", "Bearer " + token)
 					.contentType(MediaType.APPLICATION_JSON)
 					.content("""
-							{"items":[{"productId":"%s","quantity":8}]}
+							{"items":[{"productId":"%s","quantity":17}]}
 							""".formatted(productId)))
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.status").value("CANCELLED"));
@@ -164,7 +191,9 @@ class DispatchflowApplicationTests {
 		mockMvc.perform(get("/api/v1/inventory/" + productId)
 					.header("Authorization", "Bearer " + token))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[0].availableQuantity").value(7))
-				.andExpect(jsonPath("$[0].reservedQuantity").value(5));
+				.andExpect(jsonPath("$[0].availableQuantity").value(4))
+				.andExpect(jsonPath("$[0].reservedQuantity").value(0))
+				.andExpect(jsonPath("$[1].availableQuantity").value(12))
+				.andExpect(jsonPath("$[1].reservedQuantity").value(0));
 	}
 }
