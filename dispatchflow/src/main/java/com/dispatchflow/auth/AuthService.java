@@ -1,6 +1,5 @@
 package com.dispatchflow.auth;
 
-import com.dispatchflow.common.api.ResourceNotFoundException;
 import com.dispatchflow.users.User;
 import com.dispatchflow.users.UserRepository;
 import com.dispatchflow.users.UserResponse;

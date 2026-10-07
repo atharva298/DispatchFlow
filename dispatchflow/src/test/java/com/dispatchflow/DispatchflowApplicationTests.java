@@ -195,5 +195,44 @@ class DispatchflowApplicationTests {
 				.andExpect(jsonPath("$[0].reservedQuantity").value(0))
 				.andExpect(jsonPath("$[1].availableQuantity").value(12))
 				.andExpect(jsonPath("$[1].reservedQuantity").value(0));
+
+		MvcResult shippingOrder = mockMvc.perform(post("/api/v1/orders")
+					.header("Authorization", "Bearer " + token)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{"items":[{"productId":"%s","quantity":6}]}
+							""".formatted(productId)))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.status").value("CONFIRMED"))
+				.andReturn();
+		String shippingOrderId = objectMapper.readTree(shippingOrder.getResponse().getContentAsString())
+				.get("id").asString();
+		MvcResult shipmentCreation = mockMvc.perform(post("/api/v1/shipments")
+					.header("Authorization", "Bearer " + operatorToken)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{"orderId":"%s","carrier":"FastShip","estimatedDeliveryDate":"2099-12-31"}
+							""".formatted(shippingOrderId)))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.status").value("CREATED"))
+				.andExpect(jsonPath("$.carrier").value("FastShip"))
+				.andReturn();
+		String trackingNumber = objectMapper.readTree(shipmentCreation.getResponse().getContentAsString())
+				.get("trackingNumber").asString();
+		mockMvc.perform(get("/api/v1/shipments/" + trackingNumber)
+					.header("Authorization", "Bearer " + token))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.orderId").value(shippingOrderId));
+		mockMvc.perform(get("/api/v1/orders/" + shippingOrderId)
+					.header("Authorization", "Bearer " + token))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value("PROCESSING"));
+		mockMvc.perform(post("/api/v1/shipments")
+					.header("Authorization", "Bearer " + token)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{"orderId":"%s","carrier":"FastShip","estimatedDeliveryDate":"2099-12-31"}
+							""".formatted(shippingOrderId)))
+				.andExpect(status().isForbidden());
 	}
 }

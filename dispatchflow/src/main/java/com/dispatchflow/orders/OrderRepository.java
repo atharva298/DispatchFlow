@@ -23,6 +23,10 @@ public interface OrderRepository extends JpaRepository<CustomerOrder, UUID> {
 	@Query("select o from CustomerOrder o where o.id = :id and o.user.id = :userId")
 	Optional<CustomerOrder> findForUpdateByIdAndUserId(@Param("id") UUID id, @Param("userId") UUID userId);
 
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("select o from CustomerOrder o where o.id = :id")
+	Optional<CustomerOrder> findForUpdateById(@Param("id") UUID id);
+
 	@Query("select o.id from CustomerOrder o where o.user.id = :userId")
 	Page<UUID> findOrderIdsByUserId(@Param("userId") UUID userId, Pageable pageable);
 

@@ -68,6 +68,13 @@ public class CustomerOrder {
 	void confirm() { status = OrderStatus.CONFIRMED; }
 	void cancel() { status = OrderStatus.CANCELLED; }
 
+	public void beginProcessing() {
+		if (status != OrderStatus.CONFIRMED) {
+			throw new IllegalStateException("Only a confirmed order can enter processing");
+		}
+		status = OrderStatus.PROCESSING;
+	}
+
 	@PrePersist
 	void setCreationTimestamps() {
 		Instant now = Instant.now();
