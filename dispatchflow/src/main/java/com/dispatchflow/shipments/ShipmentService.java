@@ -43,4 +43,34 @@ public class ShipmentService {
 				.orElseThrow(() -> new ResourceNotFoundException("Shipment not found"));
 		return ShipmentResponse.from(shipment);
 	}
+
+	@Transactional
+	public ShipmentResponse updateStatus(String trackingNumber, ShipmentStatus nextStatus) {
+		String normalizedTrackingNumber = trackingNumber.trim().toUpperCase(Locale.ROOT);
+		Shipment shipment = shipments.findForUpdateByTrackingNumber(normalizedTrackingNumber)
+				.orElseThrow(() -> new ResourceNotFoundException("Shipment not found"));
+		if (shipment.getStatus() == nextStatus) {
+			return ShipmentResponse.from(shipment);
+		}
+		if (!shipment.getStatus().canTransitionTo(nextStatus)) {
+			throw new ConflictException("Invalid shipment status transition: "
+					+ shipment.getStatus() + " -> " + nextStatus);
+		}
+
+		if (nextStatus == ShipmentStatus.DISPATCHED
+				|| nextStatus == ShipmentStatus.OUT_FOR_DELIVERY
+				|| nextStatus == ShipmentStatus.DELIVERED) {
+			CustomerOrder order = orders.findForUpdateById(shipment.getOrder().getId())
+					.orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+			OrderStatus orderStatus = switch (nextStatus) {
+				case DISPATCHED -> OrderStatus.SHIPPED;
+				case OUT_FOR_DELIVERY -> OrderStatus.OUT_FOR_DELIVERY;
+				case DELIVERED -> OrderStatus.DELIVERED;
+				default -> throw new IllegalStateException("Unexpected shipment transition");
+			};
+			order.advanceTo(orderStatus);
+		}
+		shipment.transitionTo(nextStatus);
+		return ShipmentResponse.from(shipment);
+	}
 }

@@ -82,6 +82,7 @@ public class SecurityConfiguration {
 						.requestMatchers(HttpMethod.POST, "/api/v1/products/**").hasAnyRole("ADMIN", "OPERATOR")
 						.requestMatchers(HttpMethod.POST, "/api/v1/inventory/**").hasAnyRole("ADMIN", "OPERATOR")
 						.requestMatchers(HttpMethod.POST, "/api/v1/shipments/**").hasAnyRole("ADMIN", "OPERATOR")
+						.requestMatchers(HttpMethod.PATCH, "/api/v1/shipments/**").hasAnyRole("ADMIN", "OPERATOR")
 						.requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
 						.anyRequest().authenticated())
 				.oauth2ResourceServer(resourceServer -> resourceServer

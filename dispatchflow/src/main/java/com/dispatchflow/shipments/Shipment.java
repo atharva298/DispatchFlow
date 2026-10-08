@@ -80,4 +80,8 @@ public class Shipment {
 	public LocalDate getEstimatedDeliveryDate() { return estimatedDeliveryDate; }
 	public Instant getCreatedAt() { return createdAt; }
 	public Instant getUpdatedAt() { return updatedAt; }
+
+	void transitionTo(ShipmentStatus nextStatus) {
+		this.status = nextStatus;
+	}
 }

@@ -1,6 +1,7 @@
 package com.dispatchflow;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -232,7 +233,57 @@ class DispatchflowApplicationTests {
 					.contentType(MediaType.APPLICATION_JSON)
 					.content("""
 							{"orderId":"%s","carrier":"FastShip","estimatedDeliveryDate":"2099-12-31"}
-							""".formatted(shippingOrderId)))
+					""".formatted(shippingOrderId)))
 				.andExpect(status().isForbidden());
+
+		mockMvc.perform(patch("/api/v1/shipments/" + trackingNumber + "/status")
+					.header("Authorization", "Bearer " + token)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"status\":\"DISPATCHED\"}"))
+				.andExpect(status().isForbidden());
+		mockMvc.perform(patch("/api/v1/shipments/" + trackingNumber + "/status")
+					.header("Authorization", "Bearer " + operatorToken)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"status\":\"DISPATCHED\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value("DISPATCHED"));
+		mockMvc.perform(get("/api/v1/orders/" + shippingOrderId)
+					.header("Authorization", "Bearer " + token))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value("SHIPPED"));
+		mockMvc.perform(patch("/api/v1/shipments/" + trackingNumber + "/status")
+					.header("Authorization", "Bearer " + operatorToken)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"status\":\"DISPATCHED\"}"))
+				.andExpect(status().isOk());
+		mockMvc.perform(patch("/api/v1/shipments/" + trackingNumber + "/status")
+					.header("Authorization", "Bearer " + operatorToken)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"status\":\"DELIVERED\"}"))
+				.andExpect(status().isConflict());
+		mockMvc.perform(patch("/api/v1/shipments/" + trackingNumber + "/status")
+					.header("Authorization", "Bearer " + operatorToken)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"status\":\"IN_TRANSIT\"}"))
+				.andExpect(status().isOk());
+		mockMvc.perform(patch("/api/v1/shipments/" + trackingNumber + "/status")
+					.header("Authorization", "Bearer " + operatorToken)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"status\":\"OUT_FOR_DELIVERY\"}"))
+				.andExpect(status().isOk());
+		mockMvc.perform(get("/api/v1/orders/" + shippingOrderId)
+					.header("Authorization", "Bearer " + token))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value("OUT_FOR_DELIVERY"));
+		mockMvc.perform(patch("/api/v1/shipments/" + trackingNumber + "/status")
+					.header("Authorization", "Bearer " + operatorToken)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"status\":\"DELIVERED\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value("DELIVERED"));
+		mockMvc.perform(get("/api/v1/orders/" + shippingOrderId)
+					.header("Authorization", "Bearer " + token))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value("DELIVERED"));
 	}
 }

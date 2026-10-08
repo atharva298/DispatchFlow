@@ -75,6 +75,19 @@ public class CustomerOrder {
 		status = OrderStatus.PROCESSING;
 	}
 
+	public void advanceTo(OrderStatus nextStatus) {
+		boolean allowed = switch (status) {
+			case PROCESSING -> nextStatus == OrderStatus.SHIPPED;
+			case SHIPPED -> nextStatus == OrderStatus.OUT_FOR_DELIVERY;
+			case OUT_FOR_DELIVERY -> nextStatus == OrderStatus.DELIVERED;
+			default -> false;
+		};
+		if (!allowed) {
+			throw new IllegalStateException("Invalid order status transition: " + status + " -> " + nextStatus);
+		}
+		status = nextStatus;
+	}
+
 	@PrePersist
 	void setCreationTimestamps() {
 		Instant now = Instant.now();

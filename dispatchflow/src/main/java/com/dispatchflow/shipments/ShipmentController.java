@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import java.net.URI;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -28,5 +29,11 @@ public class ShipmentController {
 	@GetMapping("/{trackingNumber}")
 	public ShipmentResponse getByTrackingNumber(@PathVariable String trackingNumber) {
 		return shipments.getByTrackingNumber(trackingNumber);
+	}
+
+	@PatchMapping("/{trackingNumber}/status")
+	public ShipmentResponse updateStatus(@PathVariable String trackingNumber,
+			@Valid @RequestBody ShipmentStatusUpdateRequest request) {
+		return shipments.updateStatus(trackingNumber, request.status());
 	}
 }
