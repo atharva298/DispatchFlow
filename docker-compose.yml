@@ -1,4 +1,23 @@
 services:
+  api:
+    image: dispatchflow-api:${DISPATCHFLOW_IMAGE_TAG:-0.0.1-SNAPSHOT}
+    build:
+      context: ./dispatchflow
+      dockerfile: Dockerfile
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-dispatchflow}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-dispatchflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env or the shell environment}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env or the shell environment}
+      JWT_ISSUER: ${JWT_ISSUER:-dispatchflow}
+      JWT_TTL_SECONDS: ${JWT_TTL_SECONDS:-900}
+    ports:
+      - "${DISPATCHFLOW_API_PORT:-8081}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
   postgres:
     image: postgres:17-alpine
     container_name: dispatchflow-postgres
