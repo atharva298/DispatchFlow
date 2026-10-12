@@ -53,6 +53,13 @@ public class Product {
 		this.active = true;
 	}
 
+	public void updateDetails(String sku, String name, String description, BigDecimal price) {
+		this.sku = sku;
+		this.name = name;
+		this.description = description;
+		this.price = price;
+	}
+
 	@PrePersist
 	void setCreationTimestamps() {
 		Instant now = Instant.now();

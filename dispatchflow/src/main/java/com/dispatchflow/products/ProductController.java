@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -30,6 +31,12 @@ public class ProductController {
 
 	@GetMapping("/{id}")
 	public ProductResponse get(@PathVariable UUID id) {
-		return ProductResponse.from(products.get(id));
+		return products.getResponse(id);
+	}
+
+	@PutMapping("/{id}")
+	public ProductResponse update(@PathVariable UUID id, @Valid @RequestBody ProductUpdateRequest request) {
+		return ProductResponse.from(products.update(id, request.sku(), request.name(),
+				request.description(), request.price()));
 	}
 }

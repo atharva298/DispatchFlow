@@ -3,9 +3,12 @@ package com.dispatchflow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Locale;
 import java.util.UUID;
@@ -18,12 +21,15 @@ import tools.jackson.databind.ObjectMapper;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -34,6 +40,10 @@ class DispatchflowApplicationTests {
 
 	@Container
 	static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17-alpine");
+
+	@Container
+	static final GenericContainer<?> redis = new GenericContainer<>(DockerImageName.parse("redis:7.4.11-alpine3.21"))
+			.withExposedPorts(6379);
 
 	@Autowired
 	private MockMvc mockMvc;
@@ -47,11 +57,16 @@ class DispatchflowApplicationTests {
 	@Autowired
 	private PasswordEncoder passwordEncoder;
 
+	@Autowired
+	private StringRedisTemplate redisTemplate;
+
 	@DynamicPropertySource
 	static void registerDatabaseProperties(DynamicPropertyRegistry registry) {
 		registry.add("spring.datasource.url", postgres::getJdbcUrl);
 		registry.add("spring.datasource.username", postgres::getUsername);
 		registry.add("spring.datasource.password", postgres::getPassword);
+		registry.add("spring.data.redis.host", redis::getHost);
+		registry.add("spring.data.redis.port", redis::getFirstMappedPort);
 		registry.add("dispatchflow.jwt.secret", () -> "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=");
 	}
 
@@ -121,6 +136,12 @@ class DispatchflowApplicationTests {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.sku").value(sku.toUpperCase(Locale.ROOT)))
 				.andExpect(jsonPath("$.price").value(24.50));
+		String productCacheKey = "products::" + productId;
+		assertTrue(Boolean.TRUE.equals(redisTemplate.hasKey(productCacheKey)));
+		mockMvc.perform(get(creation.getResponse().getHeader("Location"))
+				.header("Authorization", "Bearer " + token))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.name").value("Desk Lamp"));
 
 		mockMvc.perform(post("/api/v1/inventory")
 					.header("Authorization", "Bearer " + operatorToken)
@@ -285,5 +306,22 @@ class DispatchflowApplicationTests {
 					.header("Authorization", "Bearer " + token))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.status").value("DELIVERED"));
+
+		mockMvc.perform(put("/api/v1/products/" + productId)
+					.header("Authorization", "Bearer " + operatorToken)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{"sku":"%s","name":"Desk Lamp Updated","description":"Warm white","price":25.50}
+							""".formatted(sku)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.name").value("Desk Lamp Updated"))
+				.andExpect(jsonPath("$.price").value(25.50));
+		assertFalse(Boolean.TRUE.equals(redisTemplate.hasKey(productCacheKey)));
+		mockMvc.perform(get("/api/v1/products/" + productId)
+				.header("Authorization", "Bearer " + token))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.name").value("Desk Lamp Updated"))
+				.andExpect(jsonPath("$.price").value(25.50));
+		assertTrue(Boolean.TRUE.equals(redisTemplate.hasKey(productCacheKey)));
 	}
 }

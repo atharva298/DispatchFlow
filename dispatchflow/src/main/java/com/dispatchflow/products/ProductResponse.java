@@ -2,6 +2,7 @@ package com.dispatchflow.products;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.io.Serializable;
 import java.util.UUID;
 
 public record ProductResponse(
@@ -12,7 +13,7 @@ public record ProductResponse(
 		BigDecimal price,
 		boolean active,
 		Instant createdAt,
-		Instant updatedAt) {
+		Instant updatedAt) implements Serializable {
 
 	static ProductResponse from(Product product) {
 		return new ProductResponse(product.getId(), product.getSku(), product.getName(),
