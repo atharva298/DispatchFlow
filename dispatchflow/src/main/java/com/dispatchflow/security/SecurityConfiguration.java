@@ -5,6 +5,7 @@ import tools.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
@@ -74,7 +75,9 @@ public class SecurityConfiguration {
 
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper objectMapper,
-			JwtAuthenticationConverter jwtAuthenticationConverter) throws Exception {
+			JwtAuthenticationConverter jwtAuthenticationConverter, StringRedisTemplate redis,
+			@Value("${dispatchflow.rate-limit.requests-per-window:100}") int requestsPerWindow,
+			@Value("${dispatchflow.rate-limit.window-seconds:60}") int windowSeconds) throws Exception {
 		http.csrf(AbstractHttpConfigurer::disable)
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(authorize -> authorize
@@ -94,6 +97,8 @@ public class SecurityConfiguration {
 				.exceptionHandling(errors -> errors.accessDeniedHandler((request, response, exception) -> writeError(
 						objectMapper, response, HttpStatus.FORBIDDEN, "FORBIDDEN",
 						"You do not have permission to access this resource", request.getRequestURI())))
+				.addFilterAfter(new UserRateLimitFilter(redis, objectMapper, requestsPerWindow, windowSeconds),
+						org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter.class)
 				.httpBasic(AbstractHttpConfigurer::disable)
 				.formLogin(AbstractHttpConfigurer::disable);
 		return http.build();

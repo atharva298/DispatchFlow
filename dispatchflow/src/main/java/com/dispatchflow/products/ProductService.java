@@ -32,13 +32,13 @@ public class ProductService {
 				.orElseThrow(() -> new ProductNotFoundException(id));
 	}
 
-	@Cacheable(cacheNames = "products", key = "#id")
+	@Cacheable(cacheNames = "products", key = "#p0")
 	@Transactional(readOnly = true)
 	public ProductResponse getResponse(UUID id) {
 		return ProductResponse.from(get(id));
 	}
 
-	@CacheEvict(cacheNames = "products", key = "#id")
+	@CacheEvict(cacheNames = "products", key = "#p0", beforeInvocation = true)
 	@Transactional
 	public Product update(UUID id, String sku, String name, String description, BigDecimal price) {
 		String normalizedSku = sku.trim().toUpperCase(Locale.ROOT);

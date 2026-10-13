@@ -12,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Locale;
 import java.util.UUID;
+import java.time.Duration;
 import com.dispatchflow.users.Role;
 import com.dispatchflow.users.User;
 import com.dispatchflow.users.UserRepository;
@@ -323,5 +324,19 @@ class DispatchflowApplicationTests {
 				.andExpect(jsonPath("$.name").value("Desk Lamp Updated"))
 				.andExpect(jsonPath("$.price").value(25.50));
 		assertTrue(Boolean.TRUE.equals(redisTemplate.hasKey(productCacheKey)));
+
+		String customerId = users.findByEmail(email).orElseThrow().getId().toString();
+		String rateLimitKey = "dispatchflow:rate-limit:user:" + customerId;
+		redisTemplate.opsForValue().set(rateLimitKey, "99", Duration.ofSeconds(60));
+		mockMvc.perform(get("/api/v1/products/" + productId)
+				.header("Authorization", "Bearer " + token))
+				.andExpect(status().isOk())
+				.andExpect(header().string("X-RateLimit-Limit", "100"))
+				.andExpect(header().string("X-RateLimit-Remaining", "0"));
+		mockMvc.perform(get("/api/v1/products/" + productId)
+				.header("Authorization", "Bearer " + token))
+				.andExpect(status().isTooManyRequests())
+				.andExpect(header().exists("Retry-After"))
+				.andExpect(jsonPath("$.error").value("RATE_LIMIT_EXCEEDED"));
 	}
 }
